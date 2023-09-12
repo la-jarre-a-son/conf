@@ -82,6 +82,35 @@ export default class Conf<T extends Record<string, any> = Record<string, unknown
 
 		this.#options = options;
 
+		if (options.defaults) {
+			this.#defaultValues = {
+				...this.#defaultValues,
+				...options.defaults,
+			};
+		}
+
+		if (options.serialize) {
+			this._serialize = options.serialize;
+		}
+
+		if (options.deserialize) {
+			this._deserialize = options.deserialize;
+		}
+
+		this.events = new EventEmitter();
+		this.#encryptionKey = options.encryptionKey;
+
+		const fileExtension = options.fileExtension ? `.${options.fileExtension}` : '';
+		this.path = path.resolve(options.cwd, `${options.configName ?? 'config'}${fileExtension}`);
+
+		if (options.migrations) {
+			if (!options.projectVersion) {
+				throw new Error('Please specify the `projectVersion` option.');
+			}
+
+			this._migrate(options.migrations, options.projectVersion, options.beforeEachMigration);
+		}
+
 		if (options.schema) {
 			if (typeof options.schema !== 'object') {
 				throw new TypeError('The `schema` option must be an object.');
@@ -107,27 +136,6 @@ export default class Conf<T extends Record<string, any> = Record<string, unknown
 			}
 		}
 
-		if (options.defaults) {
-			this.#defaultValues = {
-				...this.#defaultValues,
-				...options.defaults,
-			};
-		}
-
-		if (options.serialize) {
-			this._serialize = options.serialize;
-		}
-
-		if (options.deserialize) {
-			this._deserialize = options.deserialize;
-		}
-
-		this.events = new EventEmitter();
-		this.#encryptionKey = options.encryptionKey;
-
-		const fileExtension = options.fileExtension ? `.${options.fileExtension}` : '';
-		this.path = path.resolve(options.cwd, `${options.configName ?? 'config'}${fileExtension}`);
-
 		const fileStore = this.store;
 		const store = Object.assign(createPlainObject(), options.defaults, fileStore);
 		this._validate(store);
@@ -140,14 +148,6 @@ export default class Conf<T extends Record<string, any> = Record<string, unknown
 
 		if (options.watch) {
 			this._watch();
-		}
-
-		if (options.migrations) {
-			if (!options.projectVersion) {
-				throw new Error('Please specify the `projectVersion` option.');
-			}
-
-			this._migrate(options.migrations, options.projectVersion, options.beforeEachMigration);
 		}
 	}
 
