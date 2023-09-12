@@ -94,6 +94,32 @@ class Conf<T extends Record<string, any> = Record<string, unknown>> implements I
 
 		this.#options = options;
 
+		if (options.serialize) {
+			this._serialize = options.serialize;
+		}
+
+		if (options.deserialize) {
+			this._deserialize = options.deserialize;
+		}
+
+		this.events = new EventEmitter();
+		this.#encryptionKey = options.encryptionKey;
+
+		const fileExtension = options.fileExtension ? `.${options.fileExtension}` : '';
+		this.path = path.resolve(options.cwd, `${options.configName ?? 'config'}${fileExtension}`);
+
+		if (options.migrations) {
+			if (!options.projectVersion) {
+				options.projectVersion = getPackageData().version;
+			}
+
+			if (!options.projectVersion) {
+				throw new Error('Project version could not be inferred. Please specify the `projectVersion` option.');
+			}
+
+			this._migrate(options.migrations, options.projectVersion, options.beforeEachMigration);
+		}
+
 		if (options.schema) {
 			if (typeof options.schema !== 'object') {
 				throw new TypeError('The `schema` option must be an object.');
@@ -126,20 +152,6 @@ class Conf<T extends Record<string, any> = Record<string, unknown>> implements I
 			};
 		}
 
-		if (options.serialize) {
-			this._serialize = options.serialize;
-		}
-
-		if (options.deserialize) {
-			this._deserialize = options.deserialize;
-		}
-
-		this.events = new EventEmitter();
-		this.#encryptionKey = options.encryptionKey;
-
-		const fileExtension = options.fileExtension ? `.${options.fileExtension}` : '';
-		this.path = path.resolve(options.cwd, `${options.configName ?? 'config'}${fileExtension}`);
-
 		const fileStore = this.store;
 		const store = Object.assign(createPlainObject(), options.defaults, fileStore);
 		this._validate(store);
@@ -152,18 +164,6 @@ class Conf<T extends Record<string, any> = Record<string, unknown>> implements I
 
 		if (options.watch) {
 			this._watch();
-		}
-
-		if (options.migrations) {
-			if (!options.projectVersion) {
-				options.projectVersion = getPackageData().version;
-			}
-
-			if (!options.projectVersion) {
-				throw new Error('Project version could not be inferred. Please specify the `projectVersion` option.');
-			}
-
-			this._migrate(options.migrations, options.projectVersion, options.beforeEachMigration);
 		}
 	}
 

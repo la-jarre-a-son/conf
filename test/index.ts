@@ -1222,3 +1222,50 @@ test('beforeEachMigration - should be called before every migration', t => {
 	t.true(conf.get('beforeEachMigration 1.0.0 → 1.0.1'));
 	t.false(conf.has('beforeEachMigration 1.0.1 → 2.0.1'));
 });
+
+test('migrations - should be able to migrate before schema validation', t => {
+	const cwd = tempy.directory();
+
+	const conf1 = new Conf({
+		cwd,
+		projectVersion: '1.0.0',
+		schema: {
+			value: {
+				type: 'string',
+				enum: [
+					'foo',
+					'bar'
+				],
+				default: 'foo'
+			}
+		}});
+
+	conf1.set('value', 'bar');
+
+	t.is(conf1.get('value'), 'bar');
+
+	const conf2 = new Conf({
+		cwd,
+		projectVersion: '2.0.0',
+		schema: {
+			value: {
+				type: 'string',
+				enum: [
+					'foo',
+					'baz'
+				],
+				default: 'foo'
+			}
+
+		},
+		migrations: {
+			'2.0.0'(store: Conf) {
+				console.log('migrate');
+				store.set('value', 'baz');
+				console.log('migrated', store.get('value'));
+			}
+		}
+	});
+
+	t.is(conf2.get('value'), 'baz');
+});
